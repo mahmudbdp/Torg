@@ -1,12 +1,12 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import { HashRouter, Routes, Route, Link } from 'react-router-dom';
 import Home from './Home';
 import Converter from './Converter';
 import { Hexagon } from 'lucide-react';
 
 function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <div className="min-h-screen bg-gray-50 flex flex-col">
         {/* Navigation Bar */}
         <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
@@ -31,7 +31,7 @@ function App() {
           </Routes>
         </main>
       </div>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 
