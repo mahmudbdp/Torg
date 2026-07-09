@@ -2,6 +2,7 @@ import React from 'react';
 import { HashRouter, Routes, Route, Link } from 'react-router-dom';
 import Home from './Home';
 import Converter from './Converter';
+import InventoryChecker from './InventoryChecker';
 import { Hexagon } from 'lucide-react';
 
 function App() {
@@ -28,6 +29,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/converter" element={<Converter />} />
+            <Route path="/inventory-checker" element={<InventoryChecker />} />
           </Routes>
         </main>
       </div>

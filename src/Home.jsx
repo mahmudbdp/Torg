@@ -58,18 +58,20 @@ const Home = () => {
             </div>
           </Link>
 
-          <div className="glass-card h-full p-8 opacity-70 bg-gray-50/50">
-            <div className="w-14 h-14 bg-gray-200 text-gray-500 rounded-xl flex items-center justify-center mb-6">
-              <Clock size={28} />
+          <Link to="/inventory-checker" className="group">
+            <div className="glass-card h-full p-8 transition-all duration-300 hover:-translate-y-1 hover:border-aws-orange hover:shadow-2xl">
+              <div className="w-14 h-14 bg-orange-50 text-aws-orange rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <Clock size={28} />
+              </div>
+              <h4 className="text-xl font-bold text-gray-900 mb-3">Inventory Checker</h4>
+              <p className="text-gray-600 mb-6 text-sm leading-relaxed flex-grow">
+                Merge Open Pick Sales Orders with current Inventory Quantities by Location to verify availability in real-time.
+              </p>
+              <span className="text-aws-orange font-semibold text-sm flex items-center gap-1 group-hover:gap-2 transition-all">
+                Open Tool <ArrowRight size={16} />
+              </span>
             </div>
-            <h4 className="text-xl font-bold text-gray-900 mb-3">Inventory Sync</h4>
-            <p className="text-gray-600 mb-6 text-sm leading-relaxed">
-              New converters and reporting utilities will appear here as they are developed.
-            </p>
-            <span className="text-gray-500 font-semibold text-sm">
-              Coming Soon
-            </span>
-          </div>
+          </Link>
 
         </div>
       </section>
