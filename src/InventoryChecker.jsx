@@ -157,6 +157,16 @@ const InventoryChecker = () => {
           
           // Force Excel to recognize Date objects and display time
           if (val instanceof Date) {
+            // Fix timezone shift between xlsx local output and exceljs UTC input
+            const correctedDate = new Date(Date.UTC(
+              val.getFullYear(),
+              val.getMonth(),
+              val.getDate(),
+              val.getHours(),
+              val.getMinutes(),
+              val.getSeconds()
+            ));
+            cell.value = correctedDate;
             cell.numFmt = 'm/d/yyyy h:mm:ss AM/PM';
           }
           
@@ -352,7 +362,7 @@ const InventoryChecker = () => {
                           return (
                             <td key={colIdx} className={cellClass}>
                               {val instanceof Date 
-                                ? val.toLocaleString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }).replace(',', '') 
+                                ? `${val.getUTCMonth()+1}/${val.getUTCDate()}/${val.getUTCFullYear()} ${val.getUTCHours() % 12 || 12}:${val.getUTCMinutes().toString().padStart(2, '0')}:${val.getUTCSeconds().toString().padStart(2, '0')} ${val.getUTCHours() >= 12 ? 'PM' : 'AM'}`
                                 : (val !== undefined ? val.toString() : '')}
                             </td>
                           );
