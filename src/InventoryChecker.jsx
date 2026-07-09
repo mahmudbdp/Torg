@@ -84,9 +84,9 @@ const InventoryChecker = () => {
       
       // 2. Read Sales Order File
       const salesData = await readFileAsync(salesFile);
-      const salesWorkbook = XLSX.read(salesData, { type: 'array' });
+      const salesWorkbook = XLSX.read(salesData, { type: 'array', cellDates: true });
       const salesSheet = salesWorkbook.Sheets[salesWorkbook.SheetNames[0]];
-      const salesRows = XLSX.utils.sheet_to_json(salesSheet, { header: 1 });
+      const salesRows = XLSX.utils.sheet_to_json(salesSheet, { header: 1, raw: false, dateNF: 'mm/dd/yyyy hh:mm:ss AM/PM' });
 
       if (salesRows.length < 2) throw new Error("Sales file is empty.");
 
