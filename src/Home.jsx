@@ -1,9 +1,13 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { FileSpreadsheet, Clock, ArrowRight } from 'lucide-react';
 
 const Home = () => {
+  useEffect(() => {
+    document.title = "Home | TORG ODP JOB";
+  }, []);
+
   return (
     <div className="animate-fade-in">
       {/* Hero Section */}

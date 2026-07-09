@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, UploadCloud, FileSpreadsheet, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -6,6 +6,10 @@ import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 
 const InventoryChecker = () => {
+  useEffect(() => {
+    document.title = "Inventory Checker | TORG ODP JOB";
+  }, []);
+
   const [salesFile, setSalesFile] = useState(null);
   const [inventoryFile, setInventoryFile] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);

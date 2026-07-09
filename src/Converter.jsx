@@ -119,6 +119,10 @@ const getCell = (row, idx, name) => {
 
 // --- Component ---
 const Converter = () => {
+  useEffect(() => {
+    document.title = "Converter | TORG ODP JOB";
+  }, []);
+
   const [currentStep, setCurrentStep] = useState(1);
   const [mapping, setMapping] = useState(DEFAULT_MAPPING);
   const [loadedRows, setLoadedRows] = useState(null);
