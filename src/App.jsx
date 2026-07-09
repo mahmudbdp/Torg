@@ -1,13 +1,22 @@
-import React from 'react';
-import { HashRouter, Routes, Route, Link } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { HashRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import Home from './Home';
 import Converter from './Converter';
 import InventoryChecker from './InventoryChecker';
 import { Hexagon } from 'lucide-react';
 
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
+
 function App() {
   return (
     <HashRouter>
+      <ScrollToTop />
       <div className="min-h-screen bg-gray-50 flex flex-col">
         {/* Navigation Bar */}
         <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
