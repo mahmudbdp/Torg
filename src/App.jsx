@@ -41,6 +41,14 @@ function App() {
             <Route path="/inventory-checker" element={<InventoryChecker />} />
           </Routes>
         </main>
+
+        {/* Minimalistic Footer */}
+        <footer className="bg-white border-t border-gray-200 py-6 mt-auto">
+          <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center text-sm text-gray-500">
+            <p>&copy; {new Date().getFullYear()} TORG ODP JOB. All rights reserved.</p>
+            <p className="mt-2 md:mt-0 text-[11px] opacity-80">Local Browser-Based Utilities • Data Securely Processed</p>
+          </div>
+        </footer>
       </div>
     </HashRouter>
   );
