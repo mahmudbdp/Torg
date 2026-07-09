@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, UploadCloud, FileSpreadsheet, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { ArrowLeft, UploadCloud, FileSpreadsheet, CheckCircle, AlertCircle, Loader2, RotateCcw } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -378,6 +378,30 @@ const InventoryChecker = () => {
               </div>
             </div>
           )}
+
+
+          {/* Navigation Buttons */}
+          <div className="mt-8 pt-6 border-t border-gray-200 flex justify-between items-center">
+            <Link
+              to="/"
+              className="font-semibold py-2 px-6 rounded-lg transition-all bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 shadow-sm inline-flex items-center"
+            >
+              <ArrowLeft size={16} className="mr-2" /> Back to Home
+            </Link>
+            <button
+              onClick={() => {
+                setSalesFile(null);
+                setInventoryFile(null);
+                setPreviewData(null);
+                setBlob(null);
+                setMessage('');
+                setError('');
+              }}
+              className="font-semibold py-2 px-6 rounded-lg transition-all bg-white hover:bg-gray-50 text-gray-600 border border-gray-300 shadow-sm inline-flex items-center"
+            >
+              <RotateCcw size={16} className="mr-2" /> Reset Form
+            </button>
+          </div>
 
         </div>
       </div>
