@@ -86,21 +86,7 @@ const InventoryChecker = () => {
       const salesData = await readFileAsync(salesFile);
       const salesWorkbook = XLSX.read(salesData, { type: 'array', cellDates: true });
       const salesSheet = salesWorkbook.Sheets[salesWorkbook.SheetNames[0]];
-      const salesRowsRaw = XLSX.utils.sheet_to_json(salesSheet, { header: 1, raw: true });
-      
-      // Convert dates to human readable strings
-      const salesRows = salesRowsRaw.map(row => {
-        if (!Array.isArray(row)) return row;
-        return row.map(cell => {
-          if (cell instanceof Date) {
-            return cell.toLocaleString('en-US', {
-              month: 'numeric', day: 'numeric', year: 'numeric',
-              hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true
-            }).replace(',', '');
-          }
-          return cell;
-        });
-      });
+      const salesRows = XLSX.utils.sheet_to_json(salesSheet, { header: 1, raw: true });
 
       if (salesRows.length < 2) throw new Error("Sales file is empty.");
 
@@ -164,24 +150,31 @@ const InventoryChecker = () => {
 
         const excelRow = outSheet.addRow(newRow);
 
-        // Apply Styles to the 4 Location Columns (which are the last 4 columns)
+        // Apply Styles and Format Dates
         const colCount = newRow.length;
-        for (let c = colCount - 3; c <= colCount; c++) {
-          const cell = excelRow.getCell(c);
+        excelRow.eachCell({ includeEmpty: false }, (cell, colNumber) => {
           const val = cell.value;
           
-          if (val !== '#N/A') {
-            if (parseFloat(val) >= 1) {
-              // Green: Light green background, dark green text
-              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD4EDDA' } };
-              cell.font = { color: { argb: 'FF155724' } };
-            } else {
-              // Red: Light red background, dark red text
-              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8D7DA' } };
-              cell.font = { color: { argb: 'FF721C24' } };
+          // Force Excel to recognize Date objects and display time
+          if (val instanceof Date) {
+            cell.numFmt = 'm/d/yyyy h:mm:ss AM/PM';
+          }
+          
+          // Apply location colors (last 4 cols)
+          if (colNumber > colCount - 4) {
+            if (val !== '#N/A') {
+              if (parseFloat(val) >= 1) {
+                // Green: Light green background, dark green text
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD4EDDA' } };
+                cell.font = { color: { argb: 'FF155724' } };
+              } else {
+                // Red: Light red background, dark red text
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8D7DA' } };
+                cell.font = { color: { argb: 'FF721C24' } };
+              }
             }
           }
-        }
+        });
       }
 
       // Build preview data (first 50 rows max to keep it fast)
@@ -358,7 +351,9 @@ const InventoryChecker = () => {
                           
                           return (
                             <td key={colIdx} className={cellClass}>
-                              {val !== undefined ? val.toString() : ''}
+                              {val instanceof Date 
+                                ? val.toLocaleString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }).replace(',', '') 
+                                : (val !== undefined ? val.toString() : '')}
                             </td>
                           );
                         })}
