@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bluecherry Tools - Local Utilities</title>
+<link rel="stylesheet" href="shared.css">
+<!-- Load DotLottie Player -->
+<script type="module" src="https://unpkg.com/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs"></script>
+
+<style>
+  /* Home Page Specific Styles */
+  .hero-home {
+    background: linear-gradient(rgba(22, 25, 31, 0.85), rgba(35, 47, 62, 0.95)), url('hero-bg.jpg') center/cover no-repeat;
+    padding: 80px 0;
+    margin-bottom: 40px;
+    color: #fff;
+  }
+  .hero-home .wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 40px;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  .hero-content {
+    flex: 1;
+    max-width: 600px;
+  }
+  .hero-content h1 {
+    color: #fff;
+    font-size: 46px;
+    margin-bottom: 20px;
+    line-height: 1.1;
+  }
+  .hero-content .sub {
+    color: #EAEDED;
+    font-size: 18px;
+    margin: 0;
+  }
+  .hero-animation {
+    flex-shrink: 0;
+    width: 350px;
+    height: 350px;
+    background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  @media (max-width: 768px) {
+    .hero-home .wrap {
+      flex-direction: column;
+      text-align: center;
+    }
+    .hero-content {
+      max-width: 100%;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="site-header">
+  <a href="index.html" class="brand">
+    <div class="brand-mark">&#9881;</div>
+    <div>
+      <div class="brand-name">Bluecherry Tools</div>
+      <div class="brand-tagline">Local browser-based utilities</div>
+    </div>
+  </a>
+</div>
+
+<div class="hero-home">
+  <div class="wrap">
+    <div class="hero-content">
+      <h1>Everything you need, running locally</h1>
+      <div class="sub">These tools process your data securely inside your browser. No files are uploaded to any external servers.</div>
+    </div>
+    <div class="hero-animation">
+      <dotlottie-player 
+        src="https://lottie.host/95198946-ca04-452d-b3f2-4805ec36b0cb/OP3toB0OEo.lottie" 
+        background="transparent" 
+        speed="1" 
+        style="width: 100%; height: 100%;" 
+        loop 
+        autoplay>
+      </dotlottie-player>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <h2>Available Utilities</h2>
+  <div class="tool-grid">
+    <a class="tool-card" href="ShipStation_to_Bluecherry.html">
+      <div class="tool-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+      </div>
+      <h3>ShipStation to Bluecherry (MJSO)</h3>
+      <p>Upload a ShipStation order export and convert it into a Bluecherry-ready MJSO .xls file with intelligent SKU parsing and mapping.</p>
+      <div class="tool-arrow">Launch converter &rarr;</div>
+    </a>
+
+    <div class="tool-card soon">
+      <div class="tool-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+      </div>
+      <h3>Inventory Sync (Coming Soon)</h3>
+      <p>New converters and reporting utilities will appear here as they are developed.</p>
+      <div class="tool-arrow">In development</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

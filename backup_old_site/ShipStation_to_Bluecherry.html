@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ShipStation to Bluecherry (MJSO) Converter</title>
+<link rel="stylesheet" href="shared.css">
+</head>
+<body>
+<div class="site-header">
+  <a href="index.html" class="brand">
+    <div class="brand-mark">&#9881;</div>
+    <div>
+      <div class="brand-name">Bluecherry Tools</div>
+    </div>
+  </a>
+</div>
+
+<div class="hero">
+  <div class="wrap" style="padding-top: 0; padding-bottom: 0;">
+    <a class="back-link" href="index.html" style="margin-bottom: 16px; color: #fff; opacity: 0.8;">&larr; Back to all tools</a>
+    <h1>ShipStation &rarr; Bluecherry (MJSO) Converter</h1>
+    <div class="sub" style="color: #AAB7B8;">Runs fully in your browser &mdash; nothing is uploaded anywhere. Open this file anytime to convert a new order export.</div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="card">
+    <h2><span class="step-num">1</span> Upload ShipStation order export (.csv or .xlsx)</h2>
+    <div class="drop" id="dropZone">
+      Click to choose file, or drag &amp; drop here
+      <input type="file" id="fileInput" accept=".csv,.xlsx,.xls">
+      <div class="filename" id="fileName"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="step-num">2</span> Store &rarr; Customer code mapping <span class="badge">editable, saved in this browser</span></h2>
+    <div id="mappingRows"></div>
+    <div class="mapping-actions">
+      <button class="secondary small" id="addMappingRow">+ Add row</button>
+      <button class="secondary small" id="resetMapping">Reset to defaults</button>
+    </div>
+    <div class="hint">"Market - Store Name" from the ShipStation file is matched exactly (case-insensitive) against the left column to get the CUSTOMER code.</div>
+  </div>
+
+  <div class="card">
+    <h2><span class="step-num">3</span> Convert &amp; download</h2>
+    <div style="display: flex; gap: 12px; align-items: center;">
+      <button id="convertBtn" disabled>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        Convert to MJSO .xls
+      </button>
+      <button class="secondary" id="downloadBtn" style="display:none;">Download MJSO_EXCEL.xls</button>
+    </div>
+    
+    <div class="spinner-wrap" id="loadingSpinner">
+      <div class="spinner"></div>
+      Processing data...
+    </div>
+
+    <div id="messages"></div>
+    <div class="tbl-scroll" id="previewWrap" style="display:none; margin-top:16px;">
+      <table id="previewTable"></table>
+    </div>
+  </div>
+</div>
+
+<script src="xlsx.full.min.js"></script>
+<script>
+(function(){
+"use strict";
+
+var OUTPUT_HEADERS = ["DIVISION","SEASON","CUSTOMER","STORE","PO_NUM","CONF_TYPE","START_DATE","END_DATE",
+  "STYLE","COLOR_CODE","LBL_CODE","DIMENSION","SIZE_DESC","TOTAL_QTY","DEPARTMENT","ORG_PRICE","ORD_TYPE",
+  "UPC","CUST_NAME","ADDRESS1","ADDRESS2","CITY","STATE","ZIPCODE","COUNTRY","ADDR_TYPE","EMAIL","PHONE",
+  "ADDRESS3","ADDRESS4","SHIPPER","FRGT_AMT","MISC_AMT","TAX_AMT","TAX_EMPT","OVER_FRGT","BILL_NUM"];
+
+var REQUIRED_INPUT_COLS = ["Market - Store Name","Amount - Order Shipping","Order - Number","Date - Order Date",
+  "Item - SKU","Item - Qty","Item - Price","Amount - Paid by Customer","Ship To - Name","Ship To - Address 1",
+  "Ship To - Address 2","Ship To - City","Ship To - State","Ship To - Postal Code","Customer Email",
+  "Amount - Order Tax","Ship To - Country","Custom - Field 2"];
+
+var DEFAULT_MAPPING = [
+  { store: "Zentail Amazon", code: "TOAMA" },
+  { store: "Zentail Outdoor Products", code: "TOECO" },
+  { store: "New eBay Store", code: "TOEBA" },
+  { store: "Zentail Okeechobee Fats", code: "TOECO" },
+  { store: "Zentail Samurai Tactical", code: "TOECO" },
+  { store: "Zentail Fieldline", code: "TOECO" },
+  { store: "Zentail Walmart", code: "TOWAL" },
+  { store: "Zentail Timber Hawk", code: "TOECO" },
+  { store: "Zentail Mantis Yoga", code: "TOECO" }
+];
+
+var MAPPING_KEY = "ss2bc_store_mapping_v1";
+var lastOutputAOA = null;
+
+// TOECO orders where (paid - freight) comes out under this amount are treated as
+// replacement orders and get re-routed to REPLACEMENT_CUSTOMER_CODE instead of TOECO
+var REPLACEMENT_SOURCE_CODE = "TOECO";
+var REPLACEMENT_CUSTOMER_CODE = "RREPL";
+var REPLACEMENT_THRESHOLD = 3;
+
+// ---------- helpers ----------
+function num(v) {
+  if (v === null || v === undefined || v === "") return 0;
+  if (typeof v === "number") return v;
+  var s = String(v).replace(/[^0-9.\-]/g, "");
+  var n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+function round2(n) { return Math.round((n + Number.EPSILON) * 100) / 100; }
+
+function parseDatePart(v) {
+  if (v instanceof Date && !isNaN(v.getTime())) return v;
+  if (typeof v === "number") {
+    var dc = XLSX.SSF.parse_date_code(v);
+    if (dc) return new Date(dc.y, dc.m - 1, dc.d);
+  }
+  var s = String(v || "").trim();
+  var datePart = s.split(" ")[0];
+  var parts = datePart.split("/");
+  if (parts.length === 3) {
+    var mo = parseInt(parts[0], 10), da = parseInt(parts[1], 10), yr = parseInt(parts[2], 10);
+    if (!isNaN(mo) && !isNaN(da) && !isNaN(yr)) return new Date(yr, mo - 1, da);
+  }
+  var parsed = new Date(s);
+  return isNaN(parsed.getTime()) ? null : parsed;
+}
+function fmtDate(d) {
+  if (!d) return "";
+  return (d.getMonth() + 1) + "/" + d.getDate() + "/" + d.getFullYear();
+}
+
+// known SKUs with no dash separators at all - too ambiguous to auto-split, so mapped by hand
+var SKU_OVERRIDES = {
+  "STT002008ECLRG": { style: "STT002", lbl: "EC", color: "008" },
+  "STT002008ECMED": { style: "STT002", lbl: "EC", color: "008" },
+  "STT001008ECXLG": { style: "STT001", lbl: "EC", color: "008" },
+  "STT001E250ECXLG": { style: "STT001", lbl: "EC", color: "E250" }
+};
+
+function splitSku(rawSku) {
+  var sku = (rawSku || "").trim();
+  if (!sku) return { style: "", lbl: "-", color: "", ok: false };
+  // an "-FBA" suffix marks Fulfilled-by-Amazon stock; it's not part of style/color/label, drop it
+  var fbaMatch = sku.match(/^(.*)-\s*FBA$/i);
+  if (fbaMatch) sku = fbaMatch[1].trim();
+
+  var override = SKU_OVERRIDES[sku.toUpperCase()];
+  if (override) return { style: override.style, lbl: override.lbl, color: override.color, ok: true };
+
+  var segments = sku.split("-").map(function (s) { return s.trim(); });
+  if (segments.length === 1) return { style: sku, lbl: "-", color: "", ok: false };
+
+  var prefix, color;
+  if (segments.length >= 3 && segments[1] === "") {
+    // "STYLE--COLOR" (e.g. "252--008") - the empty middle segment marks "no label code"
+    prefix = segments[0];
+    color = segments[2];
+    return { style: prefix, lbl: "-", color: color, ok: true };
+  }
+
+  // "STYLE+LBL-COLOR" or "STYLE+LBL-COLOR-SIZE"; any segments past the color
+  // (e.g. a trailing "-XLG" size) aren't tracked by this converter, so they're dropped
+  prefix = segments[0];
+  color = segments[1];
+
+  var style, lbl, ok = true;
+  var m = prefix.match(/^(.*\d)([A-Za-z]*)$/);
+  if (m) {
+    style = m[1];
+    lbl = m[2] || "-";
+  } else if (prefix.length > 2) {
+    // no digit anywhere in the prefix (e.g. "CAPWM") - last 2 letters are the label code
+    style = prefix.slice(0, -2);
+    lbl = prefix.slice(-2);
+  } else {
+    style = prefix;
+    lbl = "-";
+    ok = false;
+  }
+  return { style: style, lbl: lbl, color: color, ok: ok };
+}
+
+function buildHeaderIndex(headerRow) {
+  var idx = {};
+  headerRow.forEach(function (h, i) {
+    idx[String(h || "").trim().toLowerCase()] = i;
+  });
+  return idx;
+}
+function getCell(row, idx, name) {
+  var i = idx[name.toLowerCase()];
+  if (i === undefined) return "";
+  var v = row[i];
+  return v === undefined || v === null ? "" : v;
+}
+
+// ---------- store mapping UI ----------
+function loadMapping() {
+  try {
+    var raw = localStorage.getItem(MAPPING_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return DEFAULT_MAPPING.slice();
+}
+function saveMapping(list) {
+  try { localStorage.setItem(MAPPING_KEY, JSON.stringify(list)); } catch (e) {}
+}
+function renderMapping(list) {
+  var wrap = document.getElementById("mappingRows");
+  wrap.innerHTML = "";
+  list.forEach(function (entry, i) {
+    var row = document.createElement("div");
+    row.className = "mapping-row";
+    row.innerHTML =
+      '<input data-field="store" data-i="' + i + '" placeholder="Market - Store Name (exact)" value="' +
+      (entry.store || "").replace(/"/g, "&quot;") + '">' +
+      '<input data-field="code" data-i="' + i + '" placeholder="CUSTOMER code" value="' +
+      (entry.code || "").replace(/"/g, "&quot;") + '">' +
+      '<button class="secondary small" data-remove="' + i + '">Remove</button>';
+    wrap.appendChild(row);
+  });
+  wrap.querySelectorAll("input").forEach(function (inp) {
+    inp.addEventListener("input", function () {
+      var i = parseInt(inp.getAttribute("data-i"), 10);
+      var field = inp.getAttribute("data-field");
+      currentMapping[i][field] = inp.value;
+      saveMapping(currentMapping);
+    });
+  });
+  wrap.querySelectorAll("button[data-remove]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var i = parseInt(btn.getAttribute("data-remove"), 10);
+      currentMapping.splice(i, 1);
+      saveMapping(currentMapping);
+      renderMapping(currentMapping);
+    });
+  });
+}
+
+var currentMapping = loadMapping();
+renderMapping(currentMapping);
+
+document.getElementById("addMappingRow").addEventListener("click", function () {
+  currentMapping.push({ store: "", code: "" });
+  saveMapping(currentMapping);
+  renderMapping(currentMapping);
+});
+document.getElementById("resetMapping").addEventListener("click", function () {
+  if (!confirm("Reset store mapping to the 3 default rows? Your custom entries will be lost.")) return;
+  currentMapping = DEFAULT_MAPPING.slice();
+  saveMapping(currentMapping);
+  renderMapping(currentMapping);
+});
+
+function mappingDict() {
+  var d = {};
+  currentMapping.forEach(function (e) {
+    if (e.store) d[e.store.trim().toLowerCase()] = e.code || "";
+  });
+  return d;
+}
+
+// ---------- file upload ----------
+var dropZone = document.getElementById("dropZone");
+var fileInput = document.getElementById("fileInput");
+var fileNameEl = document.getElementById("fileName");
+var convertBtn = document.getElementById("convertBtn");
+var downloadBtn = document.getElementById("downloadBtn");
+var messagesEl = document.getElementById("messages");
+var previewWrap = document.getElementById("previewWrap");
+var previewTable = document.getElementById("previewTable");
+var loadingSpinner = document.getElementById("loadingSpinner");
+
+var loadedRows = null; // array of arrays incl header
+
+dropZone.addEventListener("click", function () { fileInput.click(); });
+dropZone.addEventListener("dragover", function (e) { e.preventDefault(); dropZone.classList.add("drag"); });
+dropZone.addEventListener("dragleave", function () { dropZone.classList.remove("drag"); });
+dropZone.addEventListener("drop", function (e) {
+  e.preventDefault();
+  dropZone.classList.remove("drag");
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener("change", function () {
+  if (fileInput.files.length) handleFile(fileInput.files[0]);
+});
+
+function handleFile(file) {
+  fileNameEl.textContent = file.name;
+  clearMessages();
+  var reader = new FileReader();
+  reader.onload = function (e) {
+    try {
+      var data = new Uint8Array(e.target.result);
+      var wb = XLSX.read(data, { type: "array", cellDates: true });
+      var ws = wb.Sheets[wb.SheetNames[0]];
+      var rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+      rows = rows.filter(function (r) { return r.some(function (c) { return String(c).trim() !== ""; }); });
+      if (!rows.length) { showMsg("File appears empty.", "err"); return; }
+      loadedRows = rows;
+      convertBtn.disabled = false;
+      showMsg("Loaded " + (rows.length - 1) + " data row(s) from " + file.name + ".", "ok");
+    } catch (err) {
+      showMsg("Could not read file: " + err.message, "err");
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function clearMessages() { 
+  messagesEl.innerHTML = ""; 
+  previewWrap.style.display = "none"; 
+  downloadBtn.style.display = "none";
+  loadingSpinner.style.display = "none";
+}
+function showMsg(text, cls) {
+  var d = document.createElement("div");
+  d.className = "msg " + cls;
+  d.textContent = text;
+  messagesEl.appendChild(d);
+}
+function showWarnList(title, items) {
+  var d = document.createElement("div");
+  d.className = "msg warn";
+  var h = document.createElement("div");
+  h.textContent = title;
+  d.appendChild(h);
+  var ul = document.createElement("ul");
+  ul.className = "warn-list";
+  items.slice(0, 25).forEach(function (it) {
+    var li = document.createElement("li");
+    li.textContent = it;
+    ul.appendChild(li);
+  });
+  if (items.length > 25) {
+    var li2 = document.createElement("li");
+    li2.textContent = "...and " + (items.length - 25) + " more";
+    ul.appendChild(li2);
+  }
+  d.appendChild(ul);
+  messagesEl.appendChild(d);
+}
+
+// ---------- conversion ----------
+convertBtn.addEventListener("click", function () {
+  clearMessages();
+  if (!loadedRows) return;
+  
+  // Disable button and show spinner
+  convertBtn.disabled = true;
+  loadingSpinner.style.display = "flex";
+
+  // Add artificial delay to simulate "App Loading"
+  setTimeout(function() {
+    processConversion();
+  }, 600); // 600ms delay
+});
+
+function processConversion() {
+  var header = loadedRows[0];
+  var idx = buildHeaderIndex(header);
+
+  var missing = REQUIRED_INPUT_COLS.filter(function (c) { return idx[c.toLowerCase()] === undefined; });
+  if (missing.length) {
+    showMsg("This file is missing expected ShipStation column(s): " + missing.join(", "), "err");
+    convertBtn.disabled = false;
+    loadingSpinner.style.display = "none";
+    return;
+  }
+
+  var dataRows = loadedRows.slice(1);
+  var todayStr = fmtDate(new Date());
+  var mapping = mappingDict();
+
+  // total qty per order number, for ORG_PRICE
+  var qtyByOrder = {};
+  dataRows.forEach(function (r) {
+    var ordNum = String(getCell(r, idx, "Order - Number")).trim();
+    var qty = num(getCell(r, idx, "Item - Qty"));
+    qtyByOrder[ordNum] = (qtyByOrder[ordNum] || 0) + qty;
+  });
+
+  var unmappedStores = new Set();
+  var badSkus = [];
+  var outRows = [];
+  var orderLevelAssigned = new Set(); // freight & tax are order-level; only the order's first line gets them, other lines get 0
+
+  dataRows.forEach(function (r, rowIdx) {
+    var ordNum = String(getCell(r, idx, "Order - Number")).trim();
+    if (!ordNum) return;
+
+    var store = String(getCell(r, idx, "Market - Store Name")).trim();
+    var customerCode = mapping[store.toLowerCase()];
+    if (customerCode === undefined) {
+      unmappedStores.add(store);
+      customerCode = "";
+    }
+
+    var sku = getCell(r, idx, "Item - SKU");
+    var skuParts = splitSku(sku);
+    if (!skuParts.ok) badSkus.push("Row " + (rowIdx + 2) + ": SKU \"" + sku + "\" (order " + ordNum + ")");
+
+    var qty = num(getCell(r, idx, "Item - Qty"));
+    var paid = num(getCell(r, idx, "Amount - Paid by Customer"));
+    var tax = num(getCell(r, idx, "Amount - Order Tax"));
+    var freight = num(getCell(r, idx, "Amount - Order Shipping"));
+    var totalQty = qtyByOrder[ordNum] || qty || 1;
+    var isToecoOrder = customerCode === REPLACEMENT_SOURCE_CODE;
+    // TOECO orders also have freight backed out of the unit price, on top of tax
+    var orgPrice = isToecoOrder
+      ? round2((paid - tax - freight) / totalQty)
+      : round2((paid - tax) / totalQty);
+
+    // TOECO orders where the customer paid almost nothing once freight is excluded
+    // are replacement orders, not real sales - route them to RREPL instead of TOECO
+    if (isToecoOrder && round2(paid - freight) < REPLACEMENT_THRESHOLD) {
+      customerCode = REPLACEMENT_CUSTOMER_CODE;
+    }
+
+    var custField2 = String(getCell(r, idx, "Custom - Field 2")).trim();
+    var poNum = custField2 || ordNum;
+
+    var custName = String(getCell(r, idx, "Ship To - Name")).replace(/&/g, "and");
+
+    var orderDate = parseDatePart(getCell(r, idx, "Date - Order Date"));
+    var startDate = fmtDate(orderDate);
+
+    var out = {};
+    out.DIVISION = 1;
+    out.SEASON = "ALL";
+    out.CUSTOMER = customerCode;
+    out.STORE = "";
+    out.PO_NUM = poNum;
+    out.CONF_TYPE = "A";
+    out.START_DATE = startDate;
+    out.END_DATE = todayStr;
+    out.STYLE = skuParts.style;
+    out.COLOR_CODE = skuParts.color;
+    out.LBL_CODE = skuParts.lbl;
+    out.DIMENSION = "-";
+    out.SIZE_DESC = "-";
+    out.TOTAL_QTY = qty;
+    out.DEPARTMENT = "";
+    out.ORG_PRICE = orgPrice;
+    out.ORD_TYPE = "REG";
+    out.UPC = "";
+    out.CUST_NAME = custName;
+    out.ADDRESS1 = getCell(r, idx, "Ship To - Address 1");
+    out.ADDRESS2 = getCell(r, idx, "Ship To - Address 2");
+    out.CITY = getCell(r, idx, "Ship To - City");
+    out.STATE = getCell(r, idx, "Ship To - State");
+    out.ZIPCODE = getCell(r, idx, "Ship To - Postal Code");
+    out.COUNTRY = getCell(r, idx, "Ship To - Country");
+    out.ADDR_TYPE = "OT";
+    out.EMAIL = getCell(r, idx, "Customer Email");
+    out.PHONE = "";
+    out.ADDRESS3 = "";
+    out.ADDRESS4 = "";
+    out.SHIPPER = "F11";
+    if (orderLevelAssigned.has(ordNum)) {
+      out.FRGT_AMT = 0;
+      out.TAX_AMT = 0;
+    } else {
+      out.FRGT_AMT = freight;
+      out.TAX_AMT = tax;
+      orderLevelAssigned.add(ordNum);
+    }
+    out.MISC_AMT = 0;
+    out.TAX_EMPT = "P";
+    out.OVER_FRGT = "P";
+    out.BILL_NUM = ordNum;
+
+    outRows.push(OUTPUT_HEADERS.map(function (h) { return out[h]; }));
+  });
+
+  convertBtn.disabled = false;
+  loadingSpinner.style.display = "none";
+
+  if (!outRows.length) {
+    showMsg("No valid data rows found to convert.", "err");
+    return;
+  }
+
+  lastOutputAOA = [OUTPUT_HEADERS].concat(outRows);
+  renderPreview(lastOutputAOA);
+
+  showMsg("Converted " + outRows.length + " row(s). Review the preview below, then download.", "ok");
+  if (unmappedStores.size) {
+    showWarnList(
+      "These store name(s) have no CUSTOMER mapping (CUSTOMER left blank) — add them in step 2 and re-convert:",
+      Array.from(unmappedStores)
+    );
+  }
+  if (badSkus.length) {
+    showWarnList("These SKU(s) didn't match the expected pattern (STYLE+LBLCODE-COLOR) — check STYLE/LBL_CODE manually:", badSkus);
+  }
+
+  downloadBtn.style.display = "inline-block";
+}
+
+function renderPreview(aoa) {
+  var maxRows = 50;
+  var html = "<thead><tr>" + aoa[0].map(function (h) { return "<th>" + h + "</th>"; }).join("") + "</tr></thead><tbody>";
+  for (var i = 1; i < aoa.length && i <= maxRows; i++) {
+    html += "<tr>" + aoa[i].map(function (c) { return "<td>" + (c === undefined ? "" : c) + "</td>"; }).join("") + "</tr>";
+  }
+  html += "</tbody>";
+  previewTable.innerHTML = html;
+  previewWrap.style.display = "block";
+  if (aoa.length - 1 > maxRows) {
+    showMsg("Preview shows first " + maxRows + " of " + (aoa.length - 1) + " rows. The full file will be included in the download.", "ok");
+  }
+}
+
+downloadBtn.addEventListener("click", function () {
+  if (!lastOutputAOA) return;
+  var ws = XLSX.utils.aoa_to_sheet(lastOutputAOA);
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "MJSO");
+  var now = new Date();
+  var stamp = String(now.getMonth() + 1).padStart(2, "0") + String(now.getDate()).padStart(2, "0") +
+    now.getFullYear() + String(now.getHours()).padStart(2, "0") + String(now.getMinutes()).padStart(2, "0");
+  XLSX.writeFile(wb, "MJSO_EXCEL_" + stamp + ".xls", { bookType: "xls" });
+});
+
+})();
+</script>
+</body>
+</html>
