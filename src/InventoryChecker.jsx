@@ -86,7 +86,21 @@ const InventoryChecker = () => {
       const salesData = await readFileAsync(salesFile);
       const salesWorkbook = XLSX.read(salesData, { type: 'array', cellDates: true });
       const salesSheet = salesWorkbook.Sheets[salesWorkbook.SheetNames[0]];
-      const salesRows = XLSX.utils.sheet_to_json(salesSheet, { header: 1, raw: false, dateNF: 'mm/dd/yyyy hh:mm:ss AM/PM' });
+      const salesRowsRaw = XLSX.utils.sheet_to_json(salesSheet, { header: 1, raw: true });
+      
+      // Convert dates to human readable strings
+      const salesRows = salesRowsRaw.map(row => {
+        if (!Array.isArray(row)) return row;
+        return row.map(cell => {
+          if (cell instanceof Date) {
+            return cell.toLocaleString('en-US', {
+              month: 'numeric', day: 'numeric', year: 'numeric',
+              hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true
+            }).replace(',', '');
+          }
+          return cell;
+        });
+      });
 
       if (salesRows.length < 2) throw new Error("Sales file is empty.");
 
