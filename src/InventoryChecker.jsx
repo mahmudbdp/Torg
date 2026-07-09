@@ -11,6 +11,8 @@ const InventoryChecker = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [previewData, setPreviewData] = useState(null);
+  const [excelBlob, setExcelBlob] = useState(null);
 
   const handleSalesUpload = (e) => {
     if (e.target.files && e.target.files[0]) {
@@ -168,12 +170,21 @@ const InventoryChecker = () => {
         }
       }
 
-      // Save File
+      // Build preview data (first 50 rows max to keep it fast)
+      const previewRows = [];
+      outSheet.eachRow((row, rowNumber) => {
+        if (rowNumber <= 50) {
+          previewRows.push(row.values.slice(1)); // .values is 1-indexed array in exceljs
+        }
+      });
+      setPreviewData({ headers: newHeaders, rows: previewRows.slice(1) }); // exclude header row from rows
+
+      // Save Blob
       const buffer = await outWorkbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      saveAs(blob, `Sales Order Detail - Open Pick_report_${new Date().getTime()}.xlsx`);
+      setExcelBlob(blob);
 
-      setMessage('Process Complete! File downloaded.');
+      setMessage('Process Complete! Review the data below and download the file.');
       setSalesFile(null);
       setInventoryFile(null);
     } catch (err) {
@@ -282,10 +293,68 @@ const InventoryChecker = () => {
                   <Loader2 size={18} className="animate-spin" /> Processing...
                 </>
               ) : (
-                'Generate Excel File'
+                'Generate Preview'
               )}
             </button>
           </div>
+
+          {/* Preview Section */}
+          {previewData && excelBlob && (
+            <div className="mt-12 border-t border-gray-200 pt-8 animate-fade-in">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-1">Data Preview</h2>
+                  <p className="text-gray-500 text-sm">Showing the first {previewData.rows.length} rows of the generated output.</p>
+                </div>
+                <button
+                  onClick={() => saveAs(excelBlob, `Sales Order Detail - Open Pick_report_${new Date().getTime()}.xlsx`)}
+                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-all flex items-center gap-2"
+                >
+                  <FileSpreadsheet size={20} />
+                  Download Excel File
+                </button>
+              </div>
+
+              <div className="overflow-x-auto border border-gray-200 rounded-lg shadow-sm">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-gray-50 text-gray-700 uppercase font-semibold text-xs sticky top-0">
+                    <tr>
+                      {previewData.headers.map((h, i) => (
+                        <th key={i} className="px-4 py-3 whitespace-nowrap border-b border-gray-200">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {previewData.rows.map((row, i) => (
+                      <tr key={i} className="bg-white border-b hover:bg-gray-50">
+                        {previewData.headers.map((_, colIdx) => {
+                          const val = row[colIdx];
+                          let cellClass = "px-4 py-3 whitespace-nowrap";
+                          
+                          // Style location columns (last 4 cols)
+                          if (colIdx >= previewData.headers.length - 4) {
+                            if (val !== undefined && val !== '#N/A') {
+                              if (parseFloat(val) >= 1) {
+                                cellClass += " bg-green-100 text-green-800 font-medium";
+                              } else {
+                                cellClass += " bg-red-100 text-red-800 font-medium";
+                              }
+                            }
+                          }
+                          
+                          return (
+                            <td key={colIdx} className={cellClass}>
+                              {val !== undefined ? val.toString() : ''}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
         </div>
       </div>
