@@ -69,8 +69,13 @@ const Home = () => {
 
           <Link to="/inventory-checker" className="group">
             <div className="glass-card h-full p-8 transition-all duration-300 hover:-translate-y-1 hover:border-aws-orange hover:shadow-2xl">
-              <div className="w-14 h-14 bg-orange-50 text-aws-orange rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <Clock size={28} />
+              <div className="h-32 w-full mb-6 flex items-center justify-center rounded-xl bg-orange-50/50 group-hover:bg-orange-50 transition-colors">
+                <DotLottieReact
+                  src="https://lottie.host/0de1fdd3-ed36-4eb3-9879-6f7576357117/mv13MS5ZjK.lottie"
+                  loop
+                  autoplay
+                  className="w-full h-full transform group-hover:scale-110 transition-transform duration-500"
+                />
               </div>
               <h4 className="text-xl font-bold text-gray-900 mb-3">Inventory Checker</h4>
               <p className="text-gray-600 mb-6 text-sm leading-relaxed flex-grow">
