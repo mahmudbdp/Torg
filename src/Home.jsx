@@ -71,7 +71,7 @@ const Home = () => {
             <div className="glass-card h-full p-8 transition-all duration-300 hover:-translate-y-1 hover:border-aws-orange hover:shadow-2xl">
               <div className="h-32 w-full mb-6 flex items-center justify-center rounded-xl bg-orange-50/50 group-hover:bg-orange-50 transition-colors">
                 <DotLottieReact
-                  src="https://lottie.host/0de1fdd3-ed36-4eb3-9879-6f7576357117/mv13MS5ZjK.lottie"
+                  src="https://lottie.host/49f9eb88-d9e5-47b0-b746-4014f84c3c92/UE4tQqFrNw.lottie"
                   loop
                   autoplay
                   className="w-full h-full transform group-hover:scale-110 transition-transform duration-500"
