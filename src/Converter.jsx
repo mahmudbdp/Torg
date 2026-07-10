@@ -527,25 +527,47 @@ const Converter = () => {
 
           {/* Navigation Buttons */}
           <div className="mt-8 pt-6 border-t border-gray-200 flex justify-between items-center">
-            <button
-              onClick={() => setCurrentStep(prev => Math.max(1, prev - 1))}
-              disabled={currentStep === 1}
-              className={`font-semibold py-2 px-6 rounded-lg transition-all ${
-                currentStep === 1 ? 'opacity-0 cursor-default' : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 shadow-sm'
-              }`}
-            >
-              Back
-            </button>
-            <button
-              onClick={() => setCurrentStep(prev => Math.min(3, prev + 1))}
-              disabled={currentStep === 3 || (currentStep === 1 && !loadedRows)}
-              className={`font-semibold py-2 px-6 rounded-lg transition-all ${
-                currentStep === 3 ? 'opacity-0 cursor-default' : 
-                (currentStep === 1 && !loadedRows) ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-aws-navy hover:bg-aws-squid-ink text-white shadow-md'
-              }`}
-            >
-              Next Step
-            </button>
+            {currentStep === 1 ? (
+              <Link
+                to="/"
+                className="font-semibold py-2 px-6 rounded-lg transition-all bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 shadow-sm inline-flex items-center"
+              >
+                <ArrowLeft size={16} className="mr-2" /> Back to Home
+              </Link>
+            ) : (
+              <button
+                onClick={() => setCurrentStep(prev => Math.max(1, prev - 1))}
+                className="font-semibold py-2 px-6 rounded-lg transition-all bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 shadow-sm inline-flex items-center"
+              >
+                <ArrowLeft size={16} className="mr-2" /> Back
+              </button>
+            )}
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => {
+                  setCurrentStep(1);
+                  setLoadedRows(null);
+                  setFileName("");
+                  setMessages([]);
+                  setLastOutput(null);
+                  if (fileInputRef.current) fileInputRef.current.value = "";
+                }}
+                className={`font-semibold py-2 px-6 rounded-lg transition-all bg-white hover:bg-gray-50 text-gray-600 border border-gray-300 shadow-sm inline-flex items-center ${!loadedRows ? 'opacity-0 pointer-events-none' : ''}`}
+              >
+                <RotateCcw size={16} className="mr-2" /> Start Over
+              </button>
+
+              {currentStep < 3 && (
+                <button
+                  onClick={() => setCurrentStep(prev => Math.min(3, prev + 1))}
+                  disabled={currentStep === 1 && !loadedRows}
+                  className={`font-semibold py-2 px-6 rounded-lg transition-all ${(currentStep === 1 && !loadedRows) ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-aws-navy hover:bg-aws-squid-ink text-white shadow-md'}`}
+                >
+                  Next Step
+                </button>
+              )}
+            </div>
           </div>
 
         </div>
