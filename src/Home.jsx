@@ -49,8 +49,13 @@ const Home = () => {
           
           <Link to="/converter" className="group">
             <div className="glass-card h-full p-8 transition-all duration-300 hover:-translate-y-1 hover:border-aws-blue hover:shadow-2xl">
-              <div className="w-14 h-14 bg-blue-50 text-aws-blue rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <FileSpreadsheet size={28} />
+              <div className="h-32 w-full mb-6 flex items-center justify-center rounded-xl bg-blue-50/50 group-hover:bg-blue-50 transition-colors">
+                <DotLottieReact
+                  src="https://lottie.host/611f6300-561e-4a9c-add6-2299e5eeaa1a/TOE0YmGCKt.lottie"
+                  loop
+                  autoplay
+                  className="w-full h-full transform group-hover:scale-110 transition-transform duration-500"
+                />
               </div>
               <h4 className="text-xl font-bold text-gray-900 mb-3">ShipStation to Bluecherry</h4>
               <p className="text-gray-600 mb-6 text-sm leading-relaxed flex-grow">
