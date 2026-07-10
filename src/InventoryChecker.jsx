@@ -159,8 +159,9 @@ const InventoryChecker = () => {
         excelRow.eachCell({ includeEmpty: false }, (cell, colNumber) => {
           const val = cell.value;
           
-          // Force Excel to recognize Date objects and display time
+          // Force Excel to recognize Date objects and display time conditionally
           if (val instanceof Date) {
+            const hasTime = val.getHours() !== 0 || val.getMinutes() !== 0 || val.getSeconds() !== 0;
             // Fix timezone shift between xlsx local output and exceljs UTC input
             const correctedDate = new Date(Date.UTC(
               val.getFullYear(),
@@ -171,7 +172,7 @@ const InventoryChecker = () => {
               val.getSeconds()
             ));
             cell.value = correctedDate;
-            cell.numFmt = 'm/d/yyyy h:mm:ss AM/PM';
+            cell.numFmt = hasTime ? 'm/d/yyyy h:mm:ss AM/PM' : 'm/d/yyyy';
           }
           
           // Apply location colors (last 4 cols)
@@ -366,7 +367,9 @@ const InventoryChecker = () => {
                           return (
                             <td key={colIdx} className={cellClass}>
                               {val instanceof Date 
-                                ? `${val.getUTCMonth()+1}/${val.getUTCDate()}/${val.getUTCFullYear()} ${val.getUTCHours() % 12 || 12}:${val.getUTCMinutes().toString().padStart(2, '0')}:${val.getUTCSeconds().toString().padStart(2, '0')} ${val.getUTCHours() >= 12 ? 'PM' : 'AM'}`
+                                ? (val.getUTCHours() !== 0 || val.getUTCMinutes() !== 0 || val.getUTCSeconds() !== 0 
+                                  ? `${val.getUTCMonth()+1}/${val.getUTCDate()}/${val.getUTCFullYear()} ${val.getUTCHours() % 12 || 12}:${val.getUTCMinutes().toString().padStart(2, '0')}:${val.getUTCSeconds().toString().padStart(2, '0')} ${val.getUTCHours() >= 12 ? 'PM' : 'AM'}`
+                                  : `${val.getUTCMonth()+1}/${val.getUTCDate()}/${val.getUTCFullYear()}`)
                                 : (val !== undefined ? val.toString() : '')}
                             </td>
                           );
