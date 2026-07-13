@@ -88,7 +88,7 @@ const InventoryChecker = () => {
       
       // 2. Read Sales Order File
       const salesData = await readFileAsync(salesFile);
-      const salesWorkbook = XLSX.read(salesData, { type: 'array', cellDates: true });
+      const salesWorkbook = XLSX.read(salesData, { type: 'array', cellDates: false });
       const salesSheet = salesWorkbook.Sheets[salesWorkbook.SheetNames[0]];
       const salesRows = XLSX.utils.sheet_to_json(salesSheet, { header: 1, raw: true });
 
@@ -159,25 +159,14 @@ const InventoryChecker = () => {
         excelRow.eachCell({ includeEmpty: false }, (cell, colNumber) => {
           const val = cell.value;
           
-          // Force Excel to recognize Date objects and display time conditionally
-          if (val instanceof Date) {
-            const headerName = (newHeaders[colNumber - 1] || '').toString().toLowerCase().trim();
+          // Format raw Excel date serial numbers correctly
+          const headerName = (newHeaders[colNumber - 1] || '').toString().toLowerCase().trim();
+          const dateCols = ['order date', 'start date', 'ending', 'cancel date', '940 sent date', 'time'];
+          const isDateCol = dateCols.includes(headerName) || headerName.includes('date');
+          
+          if (typeof val === 'number' && isDateCol) {
             const hideTimeCols = ['order date', 'start date', 'ending', 'cancel date'];
-            let hasTime = val.getHours() !== 0 || val.getMinutes() !== 0 || val.getSeconds() !== 0;
-            if (hideTimeCols.includes(headerName)) {
-              hasTime = false;
-            }
-            
-            // Fix timezone shift between xlsx local output and exceljs UTC input
-            const correctedDate = new Date(Date.UTC(
-              val.getFullYear(),
-              val.getMonth(),
-              val.getDate(),
-              val.getHours(),
-              val.getMinutes(),
-              val.getSeconds()
-            ));
-            cell.value = correctedDate;
+            const hasTime = !hideTimeCols.includes(headerName) && val % 1 !== 0;
             cell.numFmt = hasTime ? 'm/d/yyyy h:mm:ss AM/PM' : 'm/d/yyyy';
           }
           
@@ -372,17 +361,20 @@ const InventoryChecker = () => {
                           
                           return (
                             <td key={colIdx} className={cellClass}>
-                              {val instanceof Date 
+                              {typeof val === 'number' && (() => {
+                                const headerName = (previewData.headers[colIdx] || '').toString().toLowerCase().trim();
+                                const dateCols = ['order date', 'start date', 'ending', 'cancel date', '940 sent date', 'time'];
+                                return dateCols.includes(headerName) || headerName.includes('date');
+                              })()
                                 ? (() => {
                                     const headerName = (previewData.headers[colIdx] || '').toString().toLowerCase().trim();
                                     const hideTimeCols = ['order date', 'start date', 'ending', 'cancel date'];
-                                    let hasTime = val.getUTCHours() !== 0 || val.getUTCMinutes() !== 0 || val.getUTCSeconds() !== 0;
-                                    if (hideTimeCols.includes(headerName)) {
-                                      hasTime = false;
+                                    const hasTime = !hideTimeCols.includes(headerName) && val % 1 !== 0;
+                                    try {
+                                      return XLSX.SSF.format(hasTime ? 'm/d/yyyy h:mm:ss AM/PM' : 'm/d/yyyy', val);
+                                    } catch (e) {
+                                      return val.toString();
                                     }
-                                    return hasTime
-                                      ? `${val.getUTCMonth()+1}/${val.getUTCDate()}/${val.getUTCFullYear()} ${val.getUTCHours() % 12 || 12}:${val.getUTCMinutes().toString().padStart(2, '0')}:${val.getUTCSeconds().toString().padStart(2, '0')} ${val.getUTCHours() >= 12 ? 'PM' : 'AM'}`
-                                      : `${val.getUTCMonth()+1}/${val.getUTCDate()}/${val.getUTCFullYear()}`;
                                   })()
                                 : (val !== undefined ? val.toString() : '')}
                             </td>
